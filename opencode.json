@@ -1,0 +1,27 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "playwright": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@playwright/mcp@latest"
+      ],
+      "enabled": true
+    },
+    "arduino": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "arduino-mcp-server@0.2.8"
+      ],
+      "enabled": true,
+      "environment": {
+        "ARDUINO_CLI_PATH": "C:\\Program Files\\Arduino IDE\\resources\\app\\lib\\backend\\resources\\arduino-cli.exe",
+        "ARDUINO_SKETCH_ROOT": "C:\\Users\\Owner\\AndroidStudioProjects\\SmartMedicineBox\\firmware"
+      }
+    }
+  }
+}

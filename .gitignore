@@ -1,0 +1,43 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Build outputs and signed artifacts - never commit binaries or keys
+*.apk
+*.aab
+*.ap_
+*.dex
+*.jks
+*.keystore
+release.keystore
+
+# Local review artifacts and editor/agent caches
+.impeccable/
+.agents/
+.kotlin/
+node_modules/
+**/node_modules/
+.opencode/*.log
+
+# Firmware secrets (real Wi-Fi credentials and device key)
+firmware/secrets.h
+
+# Arduino build outputs
+firmware/build/
+
+# Machine-specific agent/tool configs and internals
+.mcp.json
+.opencode/
+.agents/
