@@ -22,7 +22,7 @@ constexpr uint8_t I2C_SDA_PIN = 21;
 constexpr uint8_t I2C_SCL_PIN = 22;
 constexpr uint8_t MEDICINE_PRESENT_IR_STATE = LOW;
 constexpr uint8_t MAX_SCHEDULES = 16;
-constexpr unsigned long REMINDER_TIMEOUT_MS = 30UL * 60UL * 1000UL;
+constexpr unsigned long REMINDER_TIMEOUT_MS = 5UL * 60UL * 1000UL;
 constexpr char FIRMWARE_VERSION[] = "1.1.0";
 
 struct MedicineSchedule {

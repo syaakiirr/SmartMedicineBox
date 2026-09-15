@@ -10,6 +10,7 @@ import com.example.smartmedicinebox.data.database.AppDatabase
 import com.example.smartmedicinebox.data.model.MedicationRecord
 import com.example.smartmedicinebox.data.model.MedicationStatus
 import com.example.smartmedicinebox.data.model.Medicine
+import com.example.smartmedicinebox.data.remote.Esp32Client
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -29,6 +30,8 @@ internal fun nextReminderTime(
 
 object MedicationAlarmScheduler {
     private const val ACTION_REMINDER = "com.example.smartmedicinebox.MEDICATION_REMINDER"
+    const val ACTION_CONFIRM_ACCESS = "com.example.smartmedicinebox.CONFIRM_ACCESS"
+    const val ACTION_MARK_MISSED = "com.example.smartmedicinebox.MARK_MISSED"
 
     fun schedule(context: Context, medicine: Medicine) {
         if (!medicine.active || medicine.medicineId <= 0) {
@@ -83,6 +86,21 @@ object MedicationAlarmScheduler {
             data = Uri.parse("smartmedicinebox://reminder/$medicineId")
             putExtra(EXTRA_MEDICINE_ID, medicineId)
         }
+
+    fun actionPendingIntent(context: Context, medicineId: Int, action: String): PendingIntent {
+        val intent = Intent(context, MedicationActionReceiver::class.java).apply {
+            this.action = action
+            data = Uri.parse("smartmedicinebox://reminder/$medicineId/$action")
+            putExtra(EXTRA_MEDICINE_ID, medicineId)
+        }
+        val requestCode = medicineId * 10 + if (action == ACTION_CONFIRM_ACCESS) 1 else 2
+        return PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
 
     internal const val EXTRA_MEDICINE_ID = "medicine_id"
     internal const val EXTRA_MEDICINE_NAME = "medicine_name"
@@ -146,6 +164,49 @@ class ReminderRescheduleReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 MedicationAlarmScheduler.scheduleAll(context)
+            } finally {
+                pendingResult.finish()
+            }
+        }
+    }
+}
+
+class MedicationActionReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val medicineId = intent.getIntExtra(MedicationAlarmScheduler.EXTRA_MEDICINE_ID, 0)
+        if (medicineId <= 0) return
+        val confirmed = intent.action == MedicationAlarmScheduler.ACTION_CONFIRM_ACCESS
+
+        val pendingResult = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                NotificationHelper.cancelMedicineReminder(context, medicineId)
+
+                val database = AppDatabase.getDatabase(context)
+                val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+                val record = database.medicationRecordDao()
+                    .getRecordForMedicineOnDate(medicineId, today)
+                if (record != null &&
+                    (record.status == MedicationStatus.DUE || record.status == MedicationStatus.PENDING)
+                ) {
+                    if (confirmed) {
+                        val now = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
+                        database.medicationRecordDao().updateStatus(
+                            record.recordId, MedicationStatus.CONFIRMED, now
+                        )
+                    } else {
+                        database.medicationRecordDao().updateStatus(
+                            record.recordId, MedicationStatus.MISSED, null
+                        )
+                    }
+                }
+
+                runCatching {
+                    Esp32Client(context).acknowledgeMedicine(
+                        medicineId,
+                        if (confirmed) MedicationStatus.CONFIRMED.name else MedicationStatus.MISSED.name
+                    )
+                }
             } finally {
                 pendingResult.finish()
             }

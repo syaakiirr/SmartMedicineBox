@@ -64,6 +64,20 @@ object NotificationHelper {
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pendingIntent)
+            .addAction(
+                android.R.drawable.ic_menu_agenda,
+                "Record access",
+                MedicationAlarmScheduler.actionPendingIntent(
+                    context, notificationId, MedicationAlarmScheduler.ACTION_CONFIRM_ACCESS
+                )
+            )
+            .addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                "Missed",
+                MedicationAlarmScheduler.actionPendingIntent(
+                    context, notificationId, MedicationAlarmScheduler.ACTION_MARK_MISSED
+                )
+            )
             .setAutoCancel(true)
             .build()
 

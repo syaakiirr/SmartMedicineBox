@@ -40,6 +40,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".notification.MedicationActionReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".notification.ReminderRescheduleReceiver"
             android:enabled="true"
             android:exported="false">
