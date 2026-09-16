@@ -1,5 +1,8 @@
 package com.example.smartmedicinebox.ui.screens
 
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -46,6 +50,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
@@ -318,6 +323,7 @@ private fun DeviceSetupDialog(
     onDismiss: () -> Unit,
     onSave: (String, String) -> Unit
 ) {
+    val context = LocalContext.current
     var address by remember(initialAddress) { mutableStateOf(initialAddress) }
     var token by remember(initialToken) { mutableStateOf(initialToken) }
     val canSave = address.isNotBlank() && token.isNotBlank()
@@ -328,9 +334,22 @@ private fun DeviceSetupDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Keep this phone and the medicine box on the same Wi-Fi. Enter the address and pairing code provided during box setup.",
+                    "First connect this phone to the SmartMedBox Wi-Fi hotspot, then enter the pairing code from the box setup.",
                     style = MaterialTheme.typography.bodyMedium
                 )
+                OutlinedButton(
+                    onClick = {
+                        val action = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            Settings.Panel.ACTION_WIFI
+                        } else {
+                            Settings.ACTION_WIFI_SETTINGS
+                        }
+                        context.startActivity(Intent(action))
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Open Wi-Fi settings")
+                }
                 when (connectionStatus) {
                     DeviceConnectionStatus.CHECKING -> LinearProgressIndicator(Modifier.fillMaxWidth())
                     DeviceConnectionStatus.CONNECTED -> Text(
@@ -349,8 +368,8 @@ private fun DeviceSetupDialog(
                     value = address,
                     onValueChange = { address = it },
                     label = { Text("Medicine box address") },
-                    placeholder = { Text("192.168.0.50") },
-                    supportingText = { Text("For example, 192.168.0.50") },
+                    placeholder = { Text("192.168.4.1") },
+                    supportingText = { Text("Default hotspot address: 192.168.4.1") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )

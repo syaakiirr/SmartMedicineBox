@@ -23,7 +23,16 @@ constexpr uint8_t I2C_SCL_PIN = 22;
 constexpr uint8_t MEDICINE_PRESENT_IR_STATE = LOW;
 constexpr uint8_t MAX_SCHEDULES = 16;
 constexpr unsigned long REMINDER_TIMEOUT_MS = 5UL * 60UL * 1000UL;
-constexpr char FIRMWARE_VERSION[] = "1.1.0";
+constexpr unsigned long WIFI_CONNECT_TIMEOUT_MS = 8000UL;
+constexpr char FIRMWARE_VERSION[] = "1.2.0";
+
+#ifndef AP_SSID
+#define AP_SSID "SmartMedBox"
+#endif
+
+#ifndef AP_PASSWORD
+#define AP_PASSWORD "SmartMed123"
+#endif
 
 struct MedicineSchedule {
   int id = 0;
@@ -92,7 +101,7 @@ void updateLcd() {
   }
 
   const String now = currentTime();
-  showLcd("Smart Med Box", now.isEmpty() ? "Syncing time..." : "WiFi  " + now);
+  showLcd("Smart Med Box", now.isEmpty() ? WiFi.softAPIP().toString() : now + "  AP ready");
 }
 
 bool isAuthorized() {
@@ -158,8 +167,13 @@ void handleHealth() {
   JsonDocument response;
   response["deviceId"] = "Smart Medicine Box";
   response["firmwareVersion"] = FIRMWARE_VERSION;
-  response["ip"] = WiFi.localIP().toString();
-  response["rssi"] = WiFi.RSSI();
+  response["ip"] = WiFi.softAPIP().toString();
+  response["hotspotSsid"] = AP_SSID;
+  response["stationConnected"] = WiFi.status() == WL_CONNECTED;
+  if (WiFi.status() == WL_CONNECTED) {
+    response["stationIp"] = WiFi.localIP().toString();
+    response["rssi"] = WiFi.RSSI();
+  }
   response["reminderActive"] = reminderActive;
   response["time"] = currentTime();
   response["lcdReady"] = lcdReady;
@@ -289,35 +303,51 @@ void setup() {
   lcdReady = lcdStatus == 0;
   if (lcdReady) {
     lcd.backlight();
-    showLcd("Smart Med Box", "Connecting WiFi");
+    showLcd("Smart Med Box", "Starting hotspot");
     Serial.println("LCD detected on SDA 21 / SCL 22.");
   } else {
     Serial.printf("LCD not detected (status %d) on SDA 21 / SCL 22.\n", lcdStatus);
   }
 
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.printf("Connecting to %s", WIFI_SSID);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print('.');
+  WiFi.mode(WIFI_AP_STA);
+  if (!WiFi.softAP(AP_SSID, AP_PASSWORD)) {
+    Serial.println("Failed to start medicine box hotspot.");
+  } else {
+    Serial.printf("Hotspot: %s\n", AP_SSID);
+    Serial.printf("Hotspot IP: %s\n", WiFi.softAPIP().toString().c_str());
+    showLcd(AP_SSID, WiFi.softAPIP().toString());
   }
-  Serial.printf("\nIP: %s\n", WiFi.localIP().toString().c_str());
-  Serial.println("Use DEVICE_TOKEN as the app pairing token.");
-  showLcd("WiFi connected", WiFi.localIP().toString());
 
-  configTime(UTC_OFFSET_SECONDS, 0, "pool.ntp.org", "time.nist.gov");
-  struct tm timeInfo;
-  if (getLocalTime(&timeInfo, 10000) && rtcReady) {
-    rtc.adjust(DateTime(
-        timeInfo.tm_year + 1900,
-        timeInfo.tm_mon + 1,
-        timeInfo.tm_mday,
-        timeInfo.tm_hour,
-        timeInfo.tm_min,
-        timeInfo.tm_sec));
-    Serial.println("RTC synchronized from NTP.");
+  const bool hasHomeWifi = strlen(WIFI_SSID) > 0 && strcmp(WIFI_SSID, "YOUR_WIFI_NAME") != 0;
+  if (hasHomeWifi) {
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    Serial.printf("Connecting to home WiFi %s", WIFI_SSID);
+    const unsigned long connectionStartedAt = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - connectionStartedAt < WIFI_CONNECT_TIMEOUT_MS) {
+      delay(500);
+      Serial.print('.');
+    }
+    Serial.println();
+
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.printf("Home WiFi IP: %s\n", WiFi.localIP().toString().c_str());
+      configTime(UTC_OFFSET_SECONDS, 0, "pool.ntp.org", "time.nist.gov");
+      struct tm timeInfo;
+      if (getLocalTime(&timeInfo, 10000) && rtcReady) {
+        rtc.adjust(DateTime(
+            timeInfo.tm_year + 1900,
+            timeInfo.tm_mon + 1,
+            timeInfo.tm_mday,
+            timeInfo.tm_hour,
+            timeInfo.tm_min,
+            timeInfo.tm_sec));
+        Serial.println("RTC synchronized from NTP.");
+      }
+    } else {
+      Serial.println("Home WiFi unavailable; hotspot and RTC remain active.");
+    }
   }
+  Serial.println("Connect the app to the hotspot IP and use DEVICE_TOKEN as the pairing token.");
 
   const char *headerKeys[] = {"X-Device-Key"};
   server.collectHeaders(headerKeys, 1);

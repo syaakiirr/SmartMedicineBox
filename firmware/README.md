@@ -1,6 +1,6 @@
-# ESP32 Wi-Fi Firmware
+# ESP32 Hotspot Firmware
 
-This firmware exposes the REST API used by the Android app and keeps Wi-Fi credentials outside source control.
+This firmware exposes the REST API used by the Android app. The ESP32 always starts its own hotspot for direct sync and can also join home Wi-Fi to update the RTC from NTP.
 
 ## Requirements
 
@@ -11,13 +11,14 @@ This firmware exposes the REST API used by the Android app and keeps Wi-Fi crede
 ## Setup
 
 1. Copy `secrets.example.h` to `secrets.h`.
-2. Set `WIFI_SSID`, `WIFI_PASSWORD`, and a long random `DEVICE_TOKEN`.
+2. Set a long random `DEVICE_TOKEN` and change `AP_PASSWORD`. Set `WIFI_SSID` and `WIFI_PASSWORD` when home Wi-Fi should be used for NTP; otherwise leave the placeholders unchanged.
 3. Confirm `LED_PIN`, `BUZZER_PIN`, and `IR_PIN` match the physical wiring.
 4. Open the `firmware` folder through `firmware.ino` in Arduino IDE and upload it to the ESP32.
-5. Open Serial Monitor at 115200 baud and note the printed IP address.
-6. On the Android dashboard, tap the connection badge and enter that IP and the same `DEVICE_TOKEN`.
+5. Open Serial Monitor at 115200 baud and confirm that the hotspot has started.
+6. Connect the phone to `AP_SSID` using `AP_PASSWORD`. Android may report that this network has no internet; stay connected.
+7. On the Android dashboard, tap the connection badge and enter `192.168.4.1` and the same `DEVICE_TOKEN`.
 
-The phone and ESP32 must use the same Wi-Fi network. Give the ESP32 a DHCP reservation in the router so its IP remains stable.
+The hotspot gateway remains `192.168.4.1`, so no router or DHCP reservation is required. When home Wi-Fi is configured, the REST API also remains reachable through the station IP printed in Serial Monitor.
 
 ## API contract
 

@@ -40,7 +40,7 @@ class Esp32Client(context: Context) {
     private val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
 
     fun config(): DeviceConfig = DeviceConfig(
-        baseUrl = preferences.getString(KEY_BASE_URL, "").orEmpty(),
+        baseUrl = preferences.getString(KEY_BASE_URL, DEFAULT_HOTSPOT_ADDRESS).orEmpty(),
         token = preferences.getString(KEY_TOKEN, "").orEmpty()
     )
 
@@ -142,6 +142,7 @@ class Esp32Client(context: Context) {
         private const val KEY_BASE_URL = "base_url"
         private const val KEY_TOKEN = "token"
         private const val KEY_LAST_EVENT = "last_event_sequence"
+        private const val DEFAULT_HOTSPOT_ADDRESS = "http://192.168.4.1"
         private const val CONNECT_TIMEOUT_MS = 2500
         private const val READ_TIMEOUT_MS = 2500
     }
