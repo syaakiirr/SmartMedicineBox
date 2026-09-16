@@ -16,7 +16,7 @@ This firmware exposes the REST API used by the Android app. The ESP32 always sta
 4. Open the `firmware` folder through `firmware.ino` in Arduino IDE and upload it to the ESP32.
 5. Open Serial Monitor at 115200 baud and confirm that the hotspot has started.
 6. Connect the phone to `AP_SSID` using `AP_PASSWORD`. Android may report that this network has no internet; stay connected.
-7. On the Android dashboard, tap the connection badge and enter `192.168.4.1` and the same `DEVICE_TOKEN`.
+7. Open the Android app. It automatically finds the box at `192.168.4.1` and syncs active schedules.
 
 The hotspot gateway remains `192.168.4.1`, so no router or DHCP reservation is required. When home Wi-Fi is configured, the REST API also remains reachable through the station IP printed in Serial Monitor.
 
@@ -28,6 +28,6 @@ The hotspot gateway remains `192.168.4.1`, so no router or DHCP reservation is r
 - `POST /api/ack`: stops the active reminder after an app action.
 - `GET /api/event`: returns the latest IR-confirmed or missed event.
 
-Every request requires `X-Device-Key` with the token from `secrets.h`.
+Requests received through the password-protected ESP32 hotspot are accepted automatically. Requests through the optional home Wi-Fi interface require `X-Device-Key` with the token from `secrets.h`.
 
 Schedules are currently held in ESP32 memory and are re-sent by the app whenever it reconnects. A future production pass can persist them with ESP32 Preferences/NVS.

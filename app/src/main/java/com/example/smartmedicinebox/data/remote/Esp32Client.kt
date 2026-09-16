@@ -31,28 +31,18 @@ enum class DeviceConnectionStatus {
 }
 
 data class DeviceConnectionState(
-    val status: DeviceConnectionStatus = DeviceConnectionStatus.UNCONFIGURED,
+    val status: DeviceConnectionStatus = DeviceConnectionStatus.CHECKING,
     val deviceName: String? = null,
-    val message: String = "Not linked"
+    val message: String = "Looking for box"
 )
 
 class Esp32Client(context: Context) {
     private val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
 
     fun config(): DeviceConfig = DeviceConfig(
-        baseUrl = preferences.getString(KEY_BASE_URL, DEFAULT_HOTSPOT_ADDRESS).orEmpty(),
+        baseUrl = DEFAULT_HOTSPOT_ADDRESS,
         token = preferences.getString(KEY_TOKEN, "").orEmpty()
     )
-
-    fun saveConfig(address: String, token: String) {
-        val normalizedAddress = address.trim()
-            .removeSuffix("/")
-            .let { if (it.isNotEmpty() && !it.startsWith("http")) "http://$it" else it }
-        preferences.edit()
-            .putString(KEY_BASE_URL, normalizedAddress)
-            .putString(KEY_TOKEN, token.trim())
-            .apply()
-    }
 
     suspend fun health(): DeviceInfo = withContext(Dispatchers.IO) {
         val json = JSONObject(request("GET", "/api/health"))
@@ -110,7 +100,6 @@ class Esp32Client(context: Context) {
     private fun request(method: String, path: String, body: String? = null): String {
         val config = config()
         require(config.baseUrl.isNotBlank()) { "Device address is not configured" }
-        require(config.token.isNotBlank()) { "Pairing token is not configured" }
 
         val connection = URL("${config.baseUrl}$path").openConnection() as HttpURLConnection
         return try {
@@ -118,7 +107,9 @@ class Esp32Client(context: Context) {
             connection.connectTimeout = CONNECT_TIMEOUT_MS
             connection.readTimeout = READ_TIMEOUT_MS
             connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("X-Device-Key", config.token)
+            if (config.token.isNotBlank()) {
+                connection.setRequestProperty("X-Device-Key", config.token)
+            }
             if (body != null) {
                 connection.doOutput = true
                 connection.setRequestProperty("Content-Type", "application/json")
@@ -139,7 +130,6 @@ class Esp32Client(context: Context) {
 
     companion object {
         private const val PREFERENCES = "esp32_device"
-        private const val KEY_BASE_URL = "base_url"
         private const val KEY_TOKEN = "token"
         private const val KEY_LAST_EVENT = "last_event_sequence"
         private const val DEFAULT_HOTSPOT_ADDRESS = "http://192.168.4.1"

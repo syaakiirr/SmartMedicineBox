@@ -10,7 +10,6 @@ import com.example.smartmedicinebox.data.model.MedicationRecord
 import com.example.smartmedicinebox.data.model.MedicationStatus
 import com.example.smartmedicinebox.data.repository.MedicineRepository
 import com.example.smartmedicinebox.data.remote.DeviceApiException
-import com.example.smartmedicinebox.data.remote.DeviceConfig
 import com.example.smartmedicinebox.data.remote.DeviceConnectionState
 import com.example.smartmedicinebox.data.remote.DeviceConnectionStatus
 import com.example.smartmedicinebox.data.remote.DeviceEvent
@@ -169,17 +168,6 @@ class MedicineViewModel(application: Application) : AndroidViewModel(application
             .firstOrNull()
     }
 
-    fun deviceConfig(): DeviceConfig = deviceClient.config()
-
-    fun configureDevice(address: String, token: String) {
-        deviceClient.saveConfig(address, token)
-        _deviceConnection.value = DeviceConnectionState(
-            status = DeviceConnectionStatus.CHECKING,
-            message = "Checking"
-        )
-        viewModelScope.launch { checkDevice(syncSchedules = true) }
-    }
-
     fun refreshDeviceConnection() {
         viewModelScope.launch { checkDevice(syncSchedules = true) }
     }
@@ -195,16 +183,15 @@ class MedicineViewModel(application: Application) : AndroidViewModel(application
 
     private suspend fun checkDevice(syncSchedules: Boolean) = deviceCheckMutex.withLock {
         val config = deviceClient.config()
-        if (config.baseUrl.isBlank() || config.token.isBlank()) {
-            _deviceConnection.value = DeviceConnectionState()
-            return@withLock
-        }
+        if (config.baseUrl.isBlank()) return@withLock
 
         val wasConnected = _deviceConnection.value.status == DeviceConnectionStatus.CONNECTED
-        _deviceConnection.value = _deviceConnection.value.copy(
-            status = DeviceConnectionStatus.CHECKING,
-            message = "Checking"
-        )
+        if (!wasConnected) {
+            _deviceConnection.value = DeviceConnectionState(
+                status = DeviceConnectionStatus.CHECKING,
+                message = "Looking for box"
+            )
+        }
         runCatching {
             val info = deviceClient.health()
             _deviceConnection.value = DeviceConnectionState(
@@ -255,8 +242,8 @@ class MedicineViewModel(application: Application) : AndroidViewModel(application
     private fun setDisconnected(error: Throwable) {
         Log.e("MedicineViewModel", "ESP32 request failed", error)
         val message = when (error) {
-            is DeviceApiException -> if (error.responseCode == 401) "Pairing token rejected" else "Device error"
-            else -> "Not reachable"
+            is DeviceApiException -> if (error.responseCode == 401) "Access denied" else "Device error"
+            else -> "Box offline"
         }
         _deviceConnection.value = DeviceConnectionState(
             status = DeviceConnectionStatus.DISCONNECTED,

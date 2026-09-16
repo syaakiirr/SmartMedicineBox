@@ -1,8 +1,5 @@
 package com.example.smartmedicinebox.ui.screens
 
-import android.content.Intent
-import android.os.Build
-import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,42 +18,30 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.smartmedicinebox.ui.components.MedicationStatusBadge
 import com.example.smartmedicinebox.ui.components.RecordStatusCard
-import com.example.smartmedicinebox.data.remote.DeviceConnectionStatus
+import com.example.smartmedicinebox.ui.components.DeviceConnectionBadge
 import com.example.smartmedicinebox.ui.viewmodel.MedicineViewModel
 import kotlinx.coroutines.launch
 
@@ -72,24 +56,8 @@ fun DashboardScreen(
     val deviceConnection by viewModel.deviceConnection.collectAsState()
     val nextMedicine = viewModel.getNextMedicine()
     val greeting = if (userName.isBlank()) "Your medicines" else "Hello, $userName"
-    var showDeviceSetup by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val isOnline = deviceConnection.status == DeviceConnectionStatus.CONNECTED
-
-    if (showDeviceSetup) {
-        DeviceSetupDialog(
-            initialAddress = viewModel.deviceConfig().baseUrl,
-            initialToken = viewModel.deviceConfig().token,
-            deviceName = deviceConnection.deviceName,
-            connectionStatus = deviceConnection.status,
-            connectionMessage = deviceConnection.message,
-            onDismiss = { showDeviceSetup = false },
-            onSave = { address, token ->
-                viewModel.configureDevice(address, token)
-            }
-        )
-    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -111,32 +79,7 @@ fun DashboardScreen(
                     }
                 },
                 actions = {
-                    Surface(
-                        modifier = Modifier.heightIn(min = 48.dp),
-                        onClick = { showDeviceSetup = true },
-                        shape = MaterialTheme.shapes.small,
-                        color = when (deviceConnection.status) {
-                            DeviceConnectionStatus.CONNECTED -> MaterialTheme.colorScheme.primaryContainer
-                            DeviceConnectionStatus.DISCONNECTED -> MaterialTheme.colorScheme.errorContainer
-                            else -> MaterialTheme.colorScheme.secondaryContainer
-                        }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isOnline) Icons.Default.Wifi else Icons.Default.WifiOff,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = deviceConnection.message,
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
-                    }
+                    DeviceConnectionBadge(deviceConnection)
                     Spacer(Modifier.width(16.dp))
                 }
             )
@@ -311,91 +254,4 @@ fun DashboardScreen(
             }
         }
     }
-}
-
-@Composable
-private fun DeviceSetupDialog(
-    initialAddress: String,
-    initialToken: String,
-    deviceName: String?,
-    connectionStatus: DeviceConnectionStatus,
-    connectionMessage: String,
-    onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit
-) {
-    val context = LocalContext.current
-    var address by remember(initialAddress) { mutableStateOf(initialAddress) }
-    var token by remember(initialToken) { mutableStateOf(initialToken) }
-    val canSave = address.isNotBlank() && token.isNotBlank()
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (deviceName == null) "Connect medicine box" else deviceName) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "First connect this phone to the SmartMedBox Wi-Fi hotspot, then enter the pairing code from the box setup.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                OutlinedButton(
-                    onClick = {
-                        val action = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            Settings.Panel.ACTION_WIFI
-                        } else {
-                            Settings.ACTION_WIFI_SETTINGS
-                        }
-                        context.startActivity(Intent(action))
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Open Wi-Fi settings")
-                }
-                when (connectionStatus) {
-                    DeviceConnectionStatus.CHECKING -> LinearProgressIndicator(Modifier.fillMaxWidth())
-                    DeviceConnectionStatus.CONNECTED -> Text(
-                        "Connected. Schedules are ready to sync.",
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    DeviceConnectionStatus.DISCONNECTED -> Text(
-                        "$connectionMessage. Check the Wi-Fi, address, and pairing code, then try again.",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    else -> Unit
-                }
-                OutlinedTextField(
-                    value = address,
-                    onValueChange = { address = it },
-                    label = { Text("Medicine box address") },
-                    placeholder = { Text("192.168.4.1") },
-                    supportingText = { Text("Default hotspot address: 192.168.4.1") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = token,
-                    onValueChange = { token = it },
-                    label = { Text("Pairing code") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (connectionStatus == DeviceConnectionStatus.CONNECTED) onDismiss()
-                    else onSave(address, token)
-                },
-                enabled = canSave && connectionStatus != DeviceConnectionStatus.CHECKING
-            ) {
-                Text(if (connectionStatus == DeviceConnectionStatus.CONNECTED) "Done" else "Connect")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
 }

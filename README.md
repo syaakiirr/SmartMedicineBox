@@ -9,7 +9,7 @@ Android app + ESP32 firmware that remind patients to take scheduled medication a
 - **Patient view** — today's schedule, next-medicine panel with physical `BOX n` number, exact-time picker (any minute, 24h), record-access / mark-missed actions with instant notification dismissal.
 - **Caregiver view** — separate navigation and overview prioritising due, missed, and recent box activity; zero counts stay quiet instead of red.
 - **Local reminders** — exact daily alarms with alarm sound + vibration, rescheduled after boot, package update, and time/timezone changes (Android 13+ notification permission requested).
-- **ESP32 sync** — authenticated REST over the box's own Wi-Fi hotspot or home LAN (`X-Device-Key`): heartbeat, schedule push/delete, acknowledgment, and IR event import. Schedules are re-sent after every reconnect (ESP32 holds them in RAM).
+- **ESP32 sync** — automatic REST sync over the box's own password-protected Wi-Fi hotspot: heartbeat, schedule push/delete, acknowledgment, and IR event import. Home-LAN API access still requires `X-Device-Key`. Schedules are re-sent after every reconnect (ESP32 holds them in RAM).
 - **Hardware** — 16×2 I2C LCD (auto-detected), DS3231 RTC (NTP-synced, offline fallback), LED + active buzzer on reminder, IR sensor confirming box access and silencing the reminder.
 
 ## Hardware
@@ -40,7 +40,7 @@ Requires Android Studio with a JDK; `minSdk 24`.
 .\gradlew.bat testDebugUnitTest assembleDebug
 ```
 
-Install `app/build/outputs/apk/debug/app-debug.apk`, create an account (Patient or Caregiver role changes the navigation), and connect the phone to the `SmartMedBox` Wi-Fi hotspot. Tap the connection badge and enter the `DEVICE_TOKEN`; the default box address is `192.168.4.1`. Android may warn that this Wi-Fi has no internet, which is expected.
+Install `app/build/outputs/apk/debug/app-debug.apk`, create an account (Patient or Caregiver role changes the navigation), and connect the phone to the `SmartMedBox` Wi-Fi hotspot. The app automatically finds the box at `192.168.4.1` and syncs without a separate linking step. Android may warn that this Wi-Fi has no internet, which is expected.
 
 ## API contract
 

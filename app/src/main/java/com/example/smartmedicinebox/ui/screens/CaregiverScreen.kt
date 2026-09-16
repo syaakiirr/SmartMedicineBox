@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import com.example.smartmedicinebox.data.model.MedicationRecord
 import com.example.smartmedicinebox.data.model.MedicationStatus
 import com.example.smartmedicinebox.ui.components.MedicationStatusBadge
+import com.example.smartmedicinebox.ui.components.DeviceConnectionBadge
 import com.example.smartmedicinebox.ui.viewmodel.MedicineViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -34,6 +35,7 @@ fun CaregiverScreen(
     val todayRecords by viewModel.todayRecords.collectAsState()
     val allRecords by viewModel.allRecords.collectAsState()
     val medicines by viewModel.allMedicines.collectAsState()
+    val deviceConnection by viewModel.deviceConnection.collectAsState()
 
     val confirmedCount = todayRecords.count { it.status == MedicationStatus.CONFIRMED }
     val missedCount    = todayRecords.count { it.status == MedicationStatus.MISSED }
@@ -52,6 +54,10 @@ fun CaregiverScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                },
+                actions = {
+                    DeviceConnectionBadge(deviceConnection)
+                    Spacer(Modifier.width(16.dp))
                 }
             )
         }

@@ -24,7 +24,7 @@ constexpr uint8_t MEDICINE_PRESENT_IR_STATE = LOW;
 constexpr uint8_t MAX_SCHEDULES = 16;
 constexpr unsigned long REMINDER_TIMEOUT_MS = 5UL * 60UL * 1000UL;
 constexpr unsigned long WIFI_CONNECT_TIMEOUT_MS = 8000UL;
-constexpr char FIRMWARE_VERSION[] = "1.2.0";
+constexpr char FIRMWARE_VERSION[] = "1.3.0";
 
 #ifndef AP_SSID
 #define AP_SSID "SmartMedBox"
@@ -104,8 +104,16 @@ void updateLcd() {
   showLcd("Smart Med Box", now.isEmpty() ? WiFi.softAPIP().toString() : now + "  AP ready");
 }
 
+bool isHotspotClient() {
+  const IPAddress clientIp = server.client().remoteIP();
+  const IPAddress hotspotIp = WiFi.softAPIP();
+  return clientIp[0] == hotspotIp[0] &&
+         clientIp[1] == hotspotIp[1] &&
+         clientIp[2] == hotspotIp[2];
+}
+
 bool isAuthorized() {
-  if (server.header("X-Device-Key") == DEVICE_TOKEN) return true;
+  if (isHotspotClient() || server.header("X-Device-Key") == DEVICE_TOKEN) return true;
   server.send(401, "application/json", "{\"error\":\"unauthorized\"}");
   return false;
 }
@@ -347,7 +355,7 @@ void setup() {
       Serial.println("Home WiFi unavailable; hotspot and RTC remain active.");
     }
   }
-  Serial.println("Connect the app to the hotspot IP and use DEVICE_TOKEN as the pairing token.");
+  Serial.println("Connect the phone to the hotspot; the app will sync automatically.");
 
   const char *headerKeys[] = {"X-Device-Key"};
   server.collectHeaders(headerKeys, 1);
