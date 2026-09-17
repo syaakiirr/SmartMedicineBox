@@ -9,7 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.smartmedicinebox.data.remote.AiApiMessage
 import com.example.smartmedicinebox.data.remote.AiKeyStore
-import com.example.smartmedicinebox.data.remote.OpenAiClient
+import com.example.smartmedicinebox.data.remote.GeminiClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,7 +36,7 @@ data class AiAssistantState(
 
 class AiAssistantViewModel(application: Application) : AndroidViewModel(application) {
     private val keyStore = AiKeyStore(application)
-    private val openAiClient = OpenAiClient(application)
+    private val geminiClient = GeminiClient(application)
     private val connectivityManager = application.getSystemService(ConnectivityManager::class.java)
     private val messageIds = AtomicLong(0)
     private val _state = MutableStateFlow(
@@ -67,7 +67,7 @@ class AiAssistantViewModel(application: Application) : AndroidViewModel(applicat
     fun saveApiKey(apiKey: String): Boolean {
         val normalizedKey = apiKey.trim()
         if (normalizedKey.length < 20) {
-            _state.update { it.copy(errorMessage = "Enter a valid OpenAI API key.") }
+            _state.update { it.copy(errorMessage = "Enter a valid Gemini API key.") }
             return false
         }
         keyStore.saveKey(normalizedKey)
@@ -110,7 +110,7 @@ class AiAssistantViewModel(application: Application) : AndroidViewModel(applicat
             return
         }
         if (!keyStore.hasKey()) {
-            _state.update { it.copy(errorMessage = "Add your OpenAI API key first.") }
+            _state.update { it.copy(errorMessage = "Add your Gemini API key first.") }
             return
         }
         if (!_state.value.hasInternet) {
@@ -131,7 +131,7 @@ class AiAssistantViewModel(application: Application) : AndroidViewModel(applicat
                         content = message.content
                     )
                 }
-                openAiClient.ask(keyStore.apiKey(), history)
+                geminiClient.ask(keyStore.apiKey(), history)
             }.onSuccess { answer ->
                 val assistantMessage = AiChatMessage(
                     messageIds.incrementAndGet(),
@@ -143,7 +143,11 @@ class AiAssistantViewModel(application: Application) : AndroidViewModel(applicat
                 }
             }.onFailure { error ->
                 _state.update {
-                    it.copy(isLoading = false, errorMessage = error.message ?: "Unable to contact the AI service.")
+                    it.copy(
+                        messages = it.messages.filterNot { message -> message.id == userMessage.id },
+                        isLoading = false,
+                        errorMessage = error.message ?: "Unable to contact the AI service."
+                    )
                 }
             }
         }

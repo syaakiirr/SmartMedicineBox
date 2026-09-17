@@ -13,29 +13,35 @@ import java.net.URL
 
 data class AiApiMessage(val role: String, val content: String)
 
-class OpenAiClient(context: Context) {
+class GeminiClient(context: Context) {
     private val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
 
     @Suppress("DEPRECATION")
     suspend fun ask(apiKey: String, messages: List<AiApiMessage>): String = withContext(Dispatchers.IO) {
-        require(apiKey.isNotBlank()) { "OpenAI API key is not configured" }
+        require(apiKey.isNotBlank()) { "Gemini API key is not configured" }
 
-        val input = JSONArray()
+        val contents = JSONArray()
         messages.takeLast(MAX_HISTORY_MESSAGES).forEach { message ->
-            input.put(
+            contents.put(
                 JSONObject()
-                    .put("role", message.role)
-                    .put("content", message.content)
+                    .put("role", if (message.role == "assistant") "model" else "user")
+                    .put("parts", JSONArray().put(JSONObject().put("text", message.content)))
             )
         }
         val requestBody = JSONObject()
-            .put("model", MODEL)
-            .put("instructions", MEDICAL_INSTRUCTIONS)
-            .put("input", input)
-            .put("max_output_tokens", MAX_OUTPUT_TOKENS)
-            .put("store", false)
+            .put(
+                "system_instruction",
+                JSONObject().put("parts", JSONArray().put(JSONObject().put("text", MEDICAL_INSTRUCTIONS)))
+            )
+            .put("contents", contents)
+            .put(
+                "generationConfig",
+                JSONObject()
+                    .put("maxOutputTokens", MAX_OUTPUT_TOKENS)
+                    .put("temperature", 0.2)
+            )
 
-        val url = URL(RESPONSES_URL)
+        val url = URL(GEMINI_URL)
         fun isValidated(network: android.net.Network): Boolean {
             val capabilities = connectivityManager.getNetworkCapabilities(network)
             return capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true &&
@@ -54,7 +60,7 @@ class OpenAiClient(context: Context) {
             connection.connectTimeout = CONNECT_TIMEOUT_MS
             connection.readTimeout = READ_TIMEOUT_MS
             connection.doOutput = true
-            connection.setRequestProperty("Authorization", "Bearer $apiKey")
+            connection.setRequestProperty("x-goog-api-key", apiKey)
             connection.setRequestProperty("Content-Type", "application/json")
             connection.setRequestProperty("Accept", "application/json")
             connection.outputStream.bufferedWriter().use { it.write(requestBody.toString()) }
@@ -67,19 +73,19 @@ class OpenAiClient(context: Context) {
             }
             val responseBody = responseStream?.bufferedReader()?.use { it.readText() }.orEmpty()
             if (responseCode !in 200..299) {
-                throw OpenAiApiException(responseCode, errorMessage(responseCode, responseBody))
+                throw GeminiApiException(responseCode, errorMessage(responseCode, responseBody))
             }
             parseResponse(responseBody)
         } catch (_: SocketTimeoutException) {
-            throw OpenAiApiException(408, "The AI request timed out. Check your internet and try again.")
+            throw GeminiApiException(408, "The AI request timed out. Check your internet and try again.")
         } finally {
             connection.disconnect()
         }
     }
 
     companion object {
-        private const val RESPONSES_URL = "https://api.openai.com/v1/responses"
-        private const val MODEL = "gpt-4o-mini"
+        private const val GEMINI_URL =
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent"
         private const val CONNECT_TIMEOUT_MS = 15_000
         private const val READ_TIMEOUT_MS = 45_000
         private const val MAX_HISTORY_MESSAGES = 10
@@ -106,24 +112,32 @@ class OpenAiClient(context: Context) {
 
         internal fun parseResponse(responseBody: String): String {
             val root = JSONObject(responseBody)
-            if (root.optString("status") == "incomplete") {
-                throw OpenAiApiException(502, "The AI response was incomplete. Please ask again with a shorter question.")
+            val blockReason = root.optJSONObject("promptFeedback")?.optString("blockReason").orEmpty()
+            if (blockReason.isNotBlank()) {
+                throw GeminiApiException(400, "Gemini blocked this request for safety. Rephrase the question and try again.")
             }
-            val output = root.optJSONArray("output") ?: JSONArray()
+            val candidates = root.optJSONArray("candidates") ?: JSONArray()
+            if (candidates.length() == 0) {
+                throw GeminiApiException(502, "Gemini returned an empty response. Please try again.")
+            }
+            val candidate = candidates.optJSONObject(0) ?: JSONObject()
+            val finishReason = candidate.optString("finishReason")
+            if (finishReason == "MAX_TOKENS") {
+                throw GeminiApiException(502, "The AI response was incomplete. Please ask again with a shorter question.")
+            }
+            if (finishReason.isNotBlank() && finishReason != "STOP") {
+                throw GeminiApiException(502, "Gemini could not complete the response ($finishReason). Please rephrase and try again.")
+            }
+            val parts = candidate.optJSONObject("content")?.optJSONArray("parts") ?: JSONArray()
             val textParts = mutableListOf<String>()
-            for (outputIndex in 0 until output.length()) {
-                val item = output.optJSONObject(outputIndex) ?: continue
-                val content = item.optJSONArray("content") ?: continue
-                for (contentIndex in 0 until content.length()) {
-                    val part = content.optJSONObject(contentIndex) ?: continue
-                    when (part.optString("type")) {
-                        "output_text" -> part.optString("text").takeIf { it.isNotBlank() }?.let(textParts::add)
-                        "refusal" -> part.optString("refusal").takeIf { it.isNotBlank() }?.let { return it }
-                    }
-                }
+            for (partIndex in 0 until parts.length()) {
+                parts.optJSONObject(partIndex)
+                    ?.optString("text")
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let(textParts::add)
             }
             if (textParts.isNotEmpty()) return textParts.joinToString("\n")
-            throw OpenAiApiException(502, "The AI returned an empty response. Please try again.")
+            throw GeminiApiException(502, "Gemini returned an empty response. Please try again.")
         }
 
         private fun errorMessage(responseCode: Int, responseBody: String): String {
@@ -131,8 +145,13 @@ class OpenAiClient(context: Context) {
                 JSONObject(responseBody).optJSONObject("error")?.optString("message")
             }.getOrNull().orEmpty()
             return when (responseCode) {
-                401 -> "The OpenAI API key is invalid. Update it in AI settings."
-                429 -> "The OpenAI API quota or rate limit was reached. Check API billing and try again."
+                400, 401, 403 -> if (apiMessage.contains("API key", ignoreCase = true)) {
+                    "The Gemini API key is invalid or restricted. Update it in AI settings."
+                } else {
+                    apiMessage.ifBlank { "Gemini rejected the request. Please check the question and try again." }
+                }
+                404 -> "The selected Gemini model is unavailable. Please update the app or try again later."
+                429 -> "The Gemini API quota or rate limit was reached. Check the API plan and try again."
                 in 500..599 -> "The AI service is temporarily unavailable. Please try again."
                 else -> apiMessage.ifBlank { "The AI request failed (HTTP $responseCode)." }
             }
@@ -140,4 +159,4 @@ class OpenAiClient(context: Context) {
     }
 }
 
-class OpenAiApiException(val responseCode: Int, message: String) : Exception(message)
+class GeminiApiException(val responseCode: Int, message: String) : Exception(message)

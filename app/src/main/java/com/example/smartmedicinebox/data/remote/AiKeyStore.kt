@@ -17,6 +17,15 @@ class AiKeyStore(context: Context) {
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
 
+    init {
+        if (preferences.contains(LEGACY_OPENAI_KEY) || preferences.contains(LEGACY_PRIVACY_ACCEPTED)) {
+            preferences.edit()
+                .remove(LEGACY_OPENAI_KEY)
+                .remove(LEGACY_PRIVACY_ACCEPTED)
+                .apply()
+        }
+    }
+
     fun hasKey(): Boolean = apiKey().isNotBlank()
 
     fun hasAcceptedPrivacy(): Boolean = preferences.getBoolean(KEY_PRIVACY_ACCEPTED, false)
@@ -37,7 +46,9 @@ class AiKeyStore(context: Context) {
 
     companion object {
         const val PREFERENCES = "ai_prefs"
-        private const val KEY_API_KEY = "openai_api_key"
-        private const val KEY_PRIVACY_ACCEPTED = "privacy_notice_accepted"
+        private const val KEY_API_KEY = "gemini_api_key"
+        private const val KEY_PRIVACY_ACCEPTED = "gemini_privacy_notice_accepted"
+        private const val LEGACY_OPENAI_KEY = "openai_api_key"
+        private const val LEGACY_PRIVACY_ACCEPTED = "privacy_notice_accepted"
     }
 }

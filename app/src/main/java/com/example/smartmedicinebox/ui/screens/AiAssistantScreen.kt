@@ -124,7 +124,7 @@ fun AiAssistantScreen(viewModel: AiAssistantViewModel = viewModel()) {
                     IconButton(onClick = {
                         if (state.hasAcceptedPrivacy) showKeyDialog = true else showPrivacyDialog = true
                     }) {
-                        Icon(Icons.Default.Key, contentDescription = "OpenAI API key settings")
+                        Icon(Icons.Default.Key, contentDescription = "Gemini API key settings")
                     }
                 }
             )
@@ -208,8 +208,8 @@ private fun MedicalSafetyCard() {
 @Composable
 private fun ConnectionBanner(state: AiAssistantState) {
     val message = when {
-        !state.hasAcceptedPrivacy -> "Review the privacy notice before sending health information to OpenAI."
-        !state.hasApiKey -> "Add your OpenAI API key to start asking questions."
+        !state.hasAcceptedPrivacy -> "Review the privacy notice before sending health information to Google Gemini."
+        !state.hasApiKey -> "Add your Gemini API key to start asking questions."
         state.hasInternet -> "AI online. Mobile data can stay on while SmartMedBox Wi-Fi is connected."
         else -> "AI needs internet. Turn on mobile data or connect to an internet-enabled Wi-Fi."
     }
@@ -368,7 +368,7 @@ private fun ApiKeyDialog(
     var apiKey by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("OpenAI API key") },
+        title = { Text("Gemini API key") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
@@ -380,7 +380,7 @@ private fun ApiKeyDialog(
                     onValueChange = { apiKey = it },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(if (hasApiKey) "Replace API key" else "API key") },
-                    placeholder = { Text("sk-...") },
+                    placeholder = { Text("AQ... or AIza...") },
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password,
@@ -419,11 +419,11 @@ private fun PrivacyNoticeDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    "Your questions and recent chat context are sent to OpenAI to generate an answer. Do not include your full name, ID number, address, or other identifying details.",
+                    "Your questions and recent chat context are sent to Google Gemini to generate an answer. Do not include your full name, ID number, address, or other identifying details.",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    "OpenAI states that API data is not used for model training by default. Prompts and responses may be retained in abuse-monitoring logs for up to 30 days. This app sets store=false so no Responses application state is saved.",
+                    "Google processes prompts and responses according to the Gemini API terms and the data policy for your API plan. Free and paid plans may handle data differently, so avoid submitting sensitive information.",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
