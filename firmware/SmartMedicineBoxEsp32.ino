@@ -24,7 +24,7 @@ constexpr uint8_t MEDICINE_PRESENT_IR_STATE = LOW;
 constexpr uint8_t MAX_SCHEDULES = 16;
 constexpr unsigned long REMINDER_TIMEOUT_MS = 5UL * 60UL * 1000UL;
 constexpr unsigned long WIFI_CONNECT_TIMEOUT_MS = 8000UL;
-constexpr char FIRMWARE_VERSION[] = "1.3.1";
+constexpr char FIRMWARE_VERSION[] = "1.3.2";
 
 #ifndef AP_SSID
 #define AP_SSID "SmartMedBox"
@@ -39,7 +39,6 @@ struct MedicineSchedule {
   String name;
   String dosage;
   String time;
-  int compartment = 1;
   bool active = false;
   int lastTriggeredDay = -1;
 };
@@ -94,8 +93,7 @@ void updateLcd() {
   if (reminderActive) {
     const int index = findSchedule(reminderMedicineId);
     if (index >= 0) {
-      showLcd("Take " + schedules[index].name,
-              schedules[index].dosage + " Box " + String(schedules[index].compartment));
+      showLcd("Take " + schedules[index].name, schedules[index].dosage);
       return;
     }
   }
@@ -219,7 +217,6 @@ void handleUpsertSchedule() {
   schedules[index].name = request["name"].as<String>();
   schedules[index].dosage = request["dosage"].as<String>();
   schedules[index].time = timeValue;
-  schedules[index].compartment = request["compartment"] | 1;
   schedules[index].active = request["active"] | true;
 
   server.send(200, "application/json", "{\"ok\":true}");
@@ -276,7 +273,7 @@ void checkSchedule() {
       reminderActive = true;
       digitalWrite(LED_PIN, HIGH);
       digitalWrite(BUZZER_PIN, HIGH);
-      Serial.printf("Reminder: %s, compartment %d\n", schedules[i].name.c_str(), schedules[i].compartment);
+      Serial.printf("Reminder: %s\n", schedules[i].name.c_str());
       break;
     }
   }

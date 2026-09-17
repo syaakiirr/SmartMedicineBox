@@ -1,7 +1,6 @@
 package com.example.smartmedicinebox.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,7 +17,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -87,14 +85,7 @@ fun AiAssistantScreen(viewModel: AiAssistantViewModel = viewModel()) {
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text("AI Medicine Assistant")
-                        Text(
-                            "General medicine and symptom guidance",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text("Medicine Assistant")
                 },
             )
         },
@@ -116,7 +107,7 @@ fun AiAssistantScreen(viewModel: AiAssistantViewModel = viewModel()) {
             contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item { MedicalSafetyCard() }
+            item { MedicalSafetyNotice() }
             item { ConnectionBanner(state) }
 
             state.errorMessage?.let { error ->
@@ -150,27 +141,23 @@ fun AiAssistantScreen(viewModel: AiAssistantViewModel = viewModel()) {
 }
 
 @Composable
-private fun MedicalSafetyCard() {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-        shape = MaterialTheme.shapes.medium
+private fun MedicalSafetyNotice() {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Icon(
-                Icons.Default.Warning,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-            Text(
-                "General information only. This AI cannot diagnose illness or replace a doctor or pharmacist. Call 999 for a medical emergency.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        }
+        Icon(
+            Icons.Default.Warning,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            "General information only. Not a diagnosis. Emergency: call 999.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -179,15 +166,11 @@ private fun ConnectionBanner(state: AiAssistantState) {
     val message = when {
         !state.hasAcceptedPrivacy -> "Review the privacy notice before sending health information to Google Gemini."
         !state.hasApiKey -> "AI access is not configured in this app build."
-        state.hasInternet -> "AI online. Mobile data can stay on while SmartMedBox Wi-Fi is connected."
+        state.hasInternet -> return
         else -> "AI needs internet. Turn on mobile data or connect to an internet-enabled Wi-Fi."
     }
     Surface(
-        color = if (state.hasApiKey && state.hasInternet) {
-            MaterialTheme.colorScheme.tertiaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh
-        },
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shape = MaterialTheme.shapes.small
     ) {
         Text(message, modifier = Modifier.fillMaxWidth().padding(12.dp), style = MaterialTheme.typography.labelMedium)
@@ -200,24 +183,10 @@ private fun EmptyChatIntro(
     suggestionsEnabled: Boolean
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primaryContainer) {
-            Icon(
-                Icons.Default.AutoAwesome,
-                contentDescription = null,
-                modifier = Modifier.padding(18.dp).size(32.dp),
-                tint = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        }
-        Text("Ask about a medicine or symptom", style = MaterialTheme.typography.titleMedium)
-        Text(
-            "Type a medicine name, active ingredient, or describe what you are experiencing.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Text("What can I help with?", style = MaterialTheme.typography.titleMedium)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(suggestedQuestions) { suggestion ->
                 SuggestionChip(
@@ -242,12 +211,7 @@ private fun MessageBubble(message: AiChatMessage) {
             color = if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
             shape = MaterialTheme.shapes.medium
         ) {
-            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    if (isUser) "You" else "AI Assistant",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
-                )
+            Column(modifier = Modifier.padding(14.dp)) {
                 Text(
                     message.content,
                     style = MaterialTheme.typography.bodyMedium,
@@ -315,9 +279,9 @@ private fun MessageComposer(
                 maxLines = 4,
                 enabled = enabled,
                 shape = MaterialTheme.shapes.medium,
-                supportingText = {
-                    Text("${value.length}/${AiAssistantViewModel.MAX_MESSAGE_LENGTH}")
-                }
+                supportingText = if (value.length >= 900) {
+                    { Text("${value.length}/${AiAssistantViewModel.MAX_MESSAGE_LENGTH}") }
+                } else null
             )
             Spacer(Modifier.width(8.dp))
             IconButton(onClick = onSend, enabled = enabled && value.isNotBlank()) {
@@ -338,15 +302,11 @@ private fun PrivacyNoticeDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    "Your questions and recent chat context are sent to Google Gemini to generate an answer. Do not include your full name, ID number, address, or other identifying details.",
+                    "Questions and recent chat are sent to Google Gemini and handled under its API terms. Do not include personal or sensitive details.",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    "Google processes prompts and responses according to the Gemini API terms and the data policy for your API plan. Free and paid plans may handle data differently, so avoid submitting sensitive information.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    "AI answers may be incomplete or outdated. Verify medicine information with the product label, pharmacist, or doctor.",
+                    "AI answers may be wrong or outdated and are not a diagnosis. Verify medicine information with the label, pharmacist, or doctor.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }

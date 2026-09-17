@@ -182,7 +182,6 @@ Example data:
 Medicine Name: Paracetamol
 Dosage: 1 Tablet
 Time: 08:00 AM
-Compartment: 1
 Status: Pending
 ```
 
@@ -192,7 +191,6 @@ Functions:
 - Delete medication
 - Set medication time
 - Set dosage
-- Select compartment
 
 ### 7.3 Medication Reminder Module
 When the scheduled medication time is reached:
@@ -314,7 +312,6 @@ Fields:
 Medicine Name
 Dosage
 Medication Time
-Compartment
 Reminder Settings
 
 [ SAVE MEDICINE ]
@@ -505,7 +502,7 @@ userId
 medicineName
 dosage
 scheduledTime
-compartment
+compartment (legacy compatibility field, fixed to 1)
 active
 ```
 

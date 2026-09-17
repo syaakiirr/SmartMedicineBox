@@ -64,7 +64,7 @@ class Esp32Client(context: Context) {
             .put("name", medicine.medicineName)
             .put("dosage", medicine.dosage)
             .put("time", medicine.scheduledTime)
-            .put("compartment", medicine.compartment)
+            .put("compartment", 1)
             .put("active", medicine.active)
         request("POST", "/api/schedule", body.toString())
         Unit

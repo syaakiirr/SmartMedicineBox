@@ -11,6 +11,6 @@ data class Medicine(
     val medicineName: String,
     val dosage: String,
     val scheduledTime: String, // Format: "HH:mm" e.g. "08:00"
-    val compartment: Int = 1,  // 1 to 4
+    val compartment: Int = 1,  // Legacy protocol field; this app uses one box.
     val active: Boolean = true
 )

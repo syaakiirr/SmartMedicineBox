@@ -6,7 +6,7 @@ Android app + ESP32 firmware that remind patients to take scheduled medication a
 
 ## Features
 
-- **Patient view** — today's schedule, next-medicine panel with physical `BOX n` number, exact-time picker (any minute, 24h), record-access / mark-missed actions with instant notification dismissal.
+- **Patient view** — today's schedule, next-medicine panel, exact-time picker (any minute, 24h), record-access / mark-missed actions with instant notification dismissal.
 - **Caregiver view** — separate navigation and overview prioritising due, missed, and recent box activity; zero counts stay quiet instead of red.
 - **Local reminders** — exact daily alarms with alarm sound + vibration, rescheduled after boot, package update, and time/timezone changes (Android 13+ notification permission requested).
 - **ESP32 sync** — automatic REST sync over the box's own password-protected Wi-Fi hotspot: heartbeat, schedule push/delete, acknowledgment, and IR event import. Home-LAN API access still requires `X-Device-Key`. Schedules are re-sent after every reconnect (ESP32 holds them in RAM).

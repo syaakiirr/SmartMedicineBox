@@ -105,15 +105,16 @@ class MedicineViewModel(application: Application) : AndroidViewModel(application
 
     fun insertMedicine(medicine: Medicine) {
         viewModelScope.launch {
-            val id = repository.insertMedicine(medicine)
-            val savedMedicine = medicine.copy(medicineId = id.toInt())
+            val normalizedMedicine = medicine.copy(compartment = 1)
+            val id = repository.insertMedicine(normalizedMedicine)
+            val savedMedicine = normalizedMedicine.copy(medicineId = id.toInt())
             // Create today's record for the new medicine
             val record = MedicationRecord(
                 medicineId = id.toInt(),
-                medicineName = medicine.medicineName,
-                dosage = medicine.dosage,
+                medicineName = normalizedMedicine.medicineName,
+                dosage = normalizedMedicine.dosage,
                 scheduledDate = today,
-                scheduledTime = medicine.scheduledTime,
+                scheduledTime = normalizedMedicine.scheduledTime,
                 status = MedicationStatus.PENDING
             )
             repository.insertRecord(record)
@@ -124,9 +125,10 @@ class MedicineViewModel(application: Application) : AndroidViewModel(application
 
     fun updateMedicine(medicine: Medicine) {
         viewModelScope.launch {
-            repository.updateMedicine(medicine)
-            MedicationAlarmScheduler.schedule(getApplication(), medicine)
-            syncMedicineWithDevice(medicine)
+            val normalizedMedicine = medicine.copy(compartment = 1)
+            repository.updateMedicine(normalizedMedicine)
+            MedicationAlarmScheduler.schedule(getApplication(), normalizedMedicine)
+            syncMedicineWithDevice(normalizedMedicine)
         }
     }
 
@@ -211,7 +213,7 @@ class MedicineViewModel(application: Application) : AndroidViewModel(application
     }
 
     private suspend fun syncAllMedicines() {
-        repository.getAllActiveMedicinesOnce().forEach { deviceClient.syncMedicine(it) }
+        repository.getAllActiveMedicinesOnce().forEach { deviceClient.syncMedicine(it.copy(compartment = 1)) }
     }
 
     private suspend fun syncMedicineWithDevice(medicine: Medicine) {

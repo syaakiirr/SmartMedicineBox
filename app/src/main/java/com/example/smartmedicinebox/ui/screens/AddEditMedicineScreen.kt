@@ -31,7 +31,6 @@ fun AddEditMedicineScreen(
     var dosage by remember { mutableStateOf(existingMedicine?.dosage ?: "") }
     var timeHour by remember { mutableStateOf(existingMedicine?.scheduledTime?.split(":")?.getOrElse(0) { "08" } ?: "08") }
     var timeMinute by remember { mutableStateOf(existingMedicine?.scheduledTime?.split(":")?.getOrElse(1) { "00" } ?: "00") }
-    var compartment by remember { mutableStateOf(existingMedicine?.compartment ?: 1) }
 
     var nameError by remember { mutableStateOf(false) }
     var dosageError by remember { mutableStateOf(false) }
@@ -152,31 +151,6 @@ fun AddEditMedicineScreen(
                 )
             }
 
-            // Compartment
-            Text("Choose a box", style = MaterialTheme.typography.titleMedium)
-            Text(
-                "Match the number printed on the physical medicine box.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                (1..4).chunked(2).forEach { row ->
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        row.forEach { num ->
-                            FilterChip(
-                                selected = compartment == num,
-                                onClick = { compartment = num },
-                                label = { Text("Box $num") },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
-            }
-
             Spacer(Modifier.height(8.dp))
 
             // Save Button
@@ -194,7 +168,7 @@ fun AddEditMedicineScreen(
                                 medicineName = medicineName.trim(),
                                 dosage = dosage.trim(),
                                 scheduledTime = scheduledTime,
-                                compartment = compartment
+                                compartment = 1
                             )
                         )
                     } else {
@@ -202,8 +176,7 @@ fun AddEditMedicineScreen(
                             Medicine(
                                 medicineName = medicineName.trim(),
                                 dosage = dosage.trim(),
-                                scheduledTime = scheduledTime,
-                                compartment = compartment
+                                scheduledTime = scheduledTime
                             )
                         )
                     }

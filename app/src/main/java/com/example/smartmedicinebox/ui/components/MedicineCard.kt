@@ -1,14 +1,11 @@
 package com.example.smartmedicinebox.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
@@ -52,27 +49,6 @@ fun MedicineCard(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(
-                shape = MaterialTheme.shapes.small,
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.size(56.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "BOX",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                        Text(
-                            text = medicine.compartment.toString(),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(medicine.medicineName, style = MaterialTheme.typography.titleMedium)
                 Text(
@@ -98,7 +74,6 @@ fun MedicineCard(
 @Composable
 fun RecordStatusCard(
     record: MedicationRecord,
-    compartment: Int? = null,
     onConfirm: ((MedicationRecord) -> Unit)? = null,
     onMissed: ((MedicationRecord) -> Unit)? = null,
     showActions: Boolean = false
@@ -120,10 +95,7 @@ fun RecordStatusCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(record.medicineName, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        text = buildString {
-                            append("${record.dosage} at ${record.scheduledTime}")
-                            compartment?.let { append("  •  Box $it") }
-                        },
+                        text = "${record.dosage} at ${record.scheduledTime}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

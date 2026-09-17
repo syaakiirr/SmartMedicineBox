@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -54,33 +55,47 @@ class GeminiClient(context: Context) {
                 val capabilities = connectivityManager.getNetworkCapabilities(network)
                 if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true) 1 else 0
             }
-        val connection = (internetNetwork?.openConnection(url) ?: url.openConnection()) as HttpURLConnection
-        try {
-            connection.requestMethod = "POST"
-            connection.connectTimeout = CONNECT_TIMEOUT_MS
-            connection.readTimeout = READ_TIMEOUT_MS
-            connection.doOutput = true
-            connection.setRequestProperty("x-goog-api-key", apiKey)
-            connection.setRequestProperty("Content-Type", "application/json")
-            connection.setRequestProperty("Accept", "application/json")
-            connection.outputStream.bufferedWriter().use { it.write(requestBody.toString()) }
+        var retryAttempt = 0
+        while (true) {
+            val connection = (internetNetwork?.openConnection(url) ?: url.openConnection()) as HttpURLConnection
+            try {
+                connection.requestMethod = "POST"
+                connection.connectTimeout = CONNECT_TIMEOUT_MS
+                connection.readTimeout = READ_TIMEOUT_MS
+                connection.doOutput = true
+                connection.setRequestProperty("x-goog-api-key", apiKey)
+                connection.setRequestProperty("Content-Type", "application/json")
+                connection.setRequestProperty("Accept", "application/json")
+                connection.outputStream.bufferedWriter().use { it.write(requestBody.toString()) }
 
-            val responseCode = connection.responseCode
-            val responseStream = if (responseCode in 200..299) {
-                connection.inputStream
-            } else {
-                connection.errorStream
+                val responseCode = connection.responseCode
+                val responseStream = if (responseCode in 200..299) {
+                    connection.inputStream
+                } else {
+                    connection.errorStream
+                }
+                val responseBody = responseStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                if (responseCode !in 200..299) {
+                    if (shouldRetry(responseCode, retryAttempt)) {
+                        retryAttempt++
+                        delay(RETRY_BASE_DELAY_MS * retryAttempt)
+                        continue
+                    }
+                    throw GeminiApiException(responseCode, errorMessage(responseCode, responseBody))
+                }
+                return@withContext parseResponse(responseBody)
+            } catch (_: SocketTimeoutException) {
+                if (retryAttempt < MAX_RETRY_ATTEMPTS) {
+                    retryAttempt++
+                    delay(RETRY_BASE_DELAY_MS * retryAttempt)
+                    continue
+                }
+                throw GeminiApiException(408, "The AI request timed out. Check your internet and try again.")
+            } finally {
+                connection.disconnect()
             }
-            val responseBody = responseStream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            if (responseCode !in 200..299) {
-                throw GeminiApiException(responseCode, errorMessage(responseCode, responseBody))
-            }
-            parseResponse(responseBody)
-        } catch (_: SocketTimeoutException) {
-            throw GeminiApiException(408, "The AI request timed out. Check your internet and try again.")
-        } finally {
-            connection.disconnect()
         }
+        error("Unreachable retry state")
     }
 
     companion object {
@@ -89,10 +104,12 @@ class GeminiClient(context: Context) {
         private const val CONNECT_TIMEOUT_MS = 15_000
         private const val READ_TIMEOUT_MS = 45_000
         private const val MAX_HISTORY_MESSAGES = 10
-        private const val MAX_OUTPUT_TOKENS = 700
+        private const val MAX_OUTPUT_TOKENS = 4_096
+        private const val MAX_RETRY_ATTEMPTS = 2
+        private const val RETRY_BASE_DELAY_MS = 750L
 
         private val MEDICAL_INSTRUCTIONS = """
-            You are the Smart Medicine Box AI assistant. Give clear, concise general health information in the same language as the user (Malay or English).
+            You are the Smart Medicine Box AI assistant. Give clear, concise general health information in the same language as the user (Malay or English). Keep routine answers under 250 words unless the user asks for more detail.
 
             MEDICINE QUESTIONS:
             - Explain common uses, active ingredients, common side effects, important warnings, and when to ask a pharmacist or doctor.
@@ -140,13 +157,16 @@ class GeminiClient(context: Context) {
             throw GeminiApiException(502, "Gemini returned an empty response. Please try again.")
         }
 
+        internal fun shouldRetry(responseCode: Int, retryAttempt: Int): Boolean =
+            responseCode in 500..599 && retryAttempt < MAX_RETRY_ATTEMPTS
+
         private fun errorMessage(responseCode: Int, responseBody: String): String {
             val apiMessage = runCatching {
                 JSONObject(responseBody).optJSONObject("error")?.optString("message")
             }.getOrNull().orEmpty()
             return when (responseCode) {
                 400, 401, 403 -> if (apiMessage.contains("API key", ignoreCase = true)) {
-                    "The Gemini API key is invalid or restricted. Update it in AI settings."
+                    "AI access is invalid or restricted. Install the latest app or contact the maintainer."
                 } else {
                     apiMessage.ifBlank { "Gemini rejected the request. Please check the question and try again." }
                 }

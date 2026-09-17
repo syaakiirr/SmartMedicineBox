@@ -26,8 +26,8 @@ android {
         applicationId = "com.example.smartmedicinebox"
         minSdk = 24
         targetSdk = 37
-        versionCode = 8
-        versionName = "1.1.6"
+        versionCode = 9
+        versionName = "1.1.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "GEMINI_API_KEY", "\"$escapedGeminiApiKey\"")

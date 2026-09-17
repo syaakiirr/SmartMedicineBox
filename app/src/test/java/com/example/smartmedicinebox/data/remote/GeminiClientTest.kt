@@ -97,4 +97,12 @@ class GeminiClientTest {
             GeminiClient.parseResponse(response)
         }
     }
+
+    @Test
+    fun shouldRetry_retriesTemporaryServerErrorsTwice() {
+        assertEquals(true, GeminiClient.shouldRetry(503, 0))
+        assertEquals(true, GeminiClient.shouldRetry(503, 1))
+        assertEquals(false, GeminiClient.shouldRetry(503, 2))
+        assertEquals(false, GeminiClient.shouldRetry(429, 0))
+    }
 }

@@ -52,7 +52,6 @@ fun DashboardScreen(
     userName: String
 ) {
     val todayRecords by viewModel.todayRecords.collectAsState()
-    val medicines by viewModel.allMedicines.collectAsState()
     val deviceConnection by viewModel.deviceConnection.collectAsState()
     val nextMedicine = viewModel.getNextMedicine()
     val greeting = if (userName.isBlank()) "Your medicines" else "Hello, $userName"
@@ -108,44 +107,17 @@ fun DashboardScreen(
                             modifier = Modifier.padding(20.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = nextMedicine.scheduledTime,
-                                        style = MaterialTheme.typography.headlineLarge,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                    Text(
-                                        text = nextMedicine.medicineName,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                }
-                                Surface(
-                                    shape = MaterialTheme.shapes.medium,
-                                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text(
-                                            "BOX",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Text(
-                                            medicines.firstOrNull { it.medicineId == nextMedicine.medicineId }
-                                                ?.compartment?.toString() ?: "-",
-                                            style = MaterialTheme.typography.titleLarge,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
+                            Column {
+                                Text(
+                                    text = nextMedicine.scheduledTime,
+                                    style = MaterialTheme.typography.headlineLarge,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    text = nextMedicine.medicineName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
                             }
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -239,7 +211,6 @@ fun DashboardScreen(
                 items(todayRecords.sortedBy { it.scheduledTime }, key = { it.recordId }) { record ->
                     RecordStatusCard(
                         record = record,
-                        compartment = medicines.firstOrNull { it.medicineId == record.medicineId }?.compartment,
                         onConfirm = {
                             viewModel.confirmMedicineTaken(it)
                             scope.launch { snackbarHostState.showSnackbar("Box access recorded") }

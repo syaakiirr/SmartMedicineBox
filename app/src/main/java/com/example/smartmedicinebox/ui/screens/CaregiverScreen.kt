@@ -34,7 +34,6 @@ fun CaregiverScreen(
 ) {
     val todayRecords by viewModel.todayRecords.collectAsState()
     val allRecords by viewModel.allRecords.collectAsState()
-    val medicines by viewModel.allMedicines.collectAsState()
     val deviceConnection by viewModel.deviceConnection.collectAsState()
 
     val confirmedCount = todayRecords.count { it.status == MedicationStatus.CONFIRMED }
@@ -169,8 +168,8 @@ fun CaregiverScreen(
                             Column {
                                 Text("Box access due", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                                 Text(
-                                    if (dueCount == 1) "One medicine is due now. Check that the patient can reach the correct box."
-                                    else "$dueCount medicines are due now. Check that the patient can reach the correct boxes.",
+                                    if (dueCount == 1) "One medicine is due now. Check that the patient can reach the medicine box."
+                                    else "$dueCount medicines are due now. Check that the patient can reach the medicine box.",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
@@ -200,10 +199,7 @@ fun CaregiverScreen(
                 }
             } else {
                 items(todayRecords.sortedBy { it.scheduledTime }) { record ->
-                    CaregiverRecordRow(
-                        record,
-                        medicines.firstOrNull { it.medicineId == record.medicineId }?.compartment
-                    )
+                    CaregiverRecordRow(record)
                 }
             }
 
@@ -255,7 +251,7 @@ private fun OverviewCard(
 }
 
 @Composable
-private fun CaregiverRecordRow(record: MedicationRecord, compartment: Int?) {
+private fun CaregiverRecordRow(record: MedicationRecord) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
@@ -270,10 +266,7 @@ private fun CaregiverRecordRow(record: MedicationRecord, compartment: Int?) {
                 Column {
                     Text(record.medicineName, fontWeight = FontWeight.SemiBold)
                     Text(
-                        buildString {
-                            append("${record.scheduledTime}  •  ${record.dosage}")
-                            compartment?.let { append("  •  Box $it") }
-                        },
+                        "${record.scheduledTime}  •  ${record.dosage}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
