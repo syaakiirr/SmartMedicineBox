@@ -34,6 +34,8 @@ class MedicineViewModel(application: Application) : AndroidViewModel(application
     private val repository = MedicineRepository(db.medicineDao(), db.medicationRecordDao())
     private val deviceClient = Esp32Client(application)
     private val deviceCheckMutex = Mutex()
+    private var consecutiveDeviceFailures = 0
+    private var schedulesNeedSync = true
 
     val allMedicines: StateFlow<List<Medicine>> = repository.allActiveMedicines
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -186,7 +188,7 @@ class MedicineViewModel(application: Application) : AndroidViewModel(application
         if (config.baseUrl.isBlank()) return@withLock
 
         val wasConnected = _deviceConnection.value.status == DeviceConnectionStatus.CONNECTED
-        if (!wasConnected) {
+        if (!wasConnected && _deviceConnection.value.status != DeviceConnectionStatus.DISCONNECTED) {
             _deviceConnection.value = DeviceConnectionState(
                 status = DeviceConnectionStatus.CHECKING,
                 message = "Looking for box"
@@ -194,12 +196,16 @@ class MedicineViewModel(application: Application) : AndroidViewModel(application
         }
         runCatching {
             val info = deviceClient.health()
+            consecutiveDeviceFailures = 0
             _deviceConnection.value = DeviceConnectionState(
                 status = DeviceConnectionStatus.CONNECTED,
                 deviceName = info.deviceId,
                 message = "Connected"
             )
-            if (syncSchedules || !wasConnected) syncAllMedicines()
+            if (syncSchedules || !wasConnected || schedulesNeedSync) {
+                syncAllMedicines()
+                schedulesNeedSync = false
+            }
             processLatestDeviceEvent()
         }.onFailure { setDisconnected(it) }
     }
@@ -209,9 +215,15 @@ class MedicineViewModel(application: Application) : AndroidViewModel(application
     }
 
     private suspend fun syncMedicineWithDevice(medicine: Medicine) {
-        if (_deviceConnection.value.status != DeviceConnectionStatus.CONNECTED) return
+        if (_deviceConnection.value.status != DeviceConnectionStatus.CONNECTED) {
+            schedulesNeedSync = true
+            return
+        }
         runCatching { deviceClient.syncMedicine(medicine) }
-            .onFailure { setDisconnected(it) }
+            .onFailure {
+                schedulesNeedSync = true
+                setDisconnected(it)
+            }
     }
 
     private suspend fun acknowledgeDevice(medicineId: Int, status: MedicationStatus) {
@@ -241,6 +253,14 @@ class MedicineViewModel(application: Application) : AndroidViewModel(application
 
     private fun setDisconnected(error: Throwable) {
         Log.e("MedicineViewModel", "ESP32 request failed", error)
+        consecutiveDeviceFailures++
+        val accessDenied = error is DeviceApiException && error.responseCode == 401
+        if (
+            !accessDenied &&
+            _deviceConnection.value.status == DeviceConnectionStatus.CONNECTED &&
+            consecutiveDeviceFailures < DEVICE_FAILURE_THRESHOLD
+        ) return
+
         val message = when (error) {
             is DeviceApiException -> if (error.responseCode == 401) "Access denied" else "Device error"
             else -> "Box offline"
@@ -253,5 +273,6 @@ class MedicineViewModel(application: Application) : AndroidViewModel(application
 
     companion object {
         private const val DEVICE_POLL_INTERVAL_MS = 10_000L
+        private const val DEVICE_FAILURE_THRESHOLD = 3
     }
 }

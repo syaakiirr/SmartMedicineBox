@@ -1,11 +1,14 @@
 package com.example.smartmedicinebox.data.remote
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import com.example.smartmedicinebox.data.model.Medicine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
+import java.net.InetAddress
 import java.net.URL
 
 data class DeviceConfig(val baseUrl: String, val token: String)
@@ -38,6 +41,8 @@ data class DeviceConnectionState(
 
 class Esp32Client(context: Context) {
     private val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+    private val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
+    private val hotspotAddress = InetAddress.getByName(DEFAULT_HOTSPOT_HOST)
 
     fun config(): DeviceConfig = DeviceConfig(
         baseUrl = DEFAULT_HOTSPOT_ADDRESS,
@@ -97,11 +102,19 @@ class Esp32Client(context: Context) {
         preferences.edit().putLong(KEY_LAST_EVENT, sequence).apply()
     }
 
+    @Suppress("DEPRECATION")
     private fun request(method: String, path: String, body: String? = null): String {
         val config = config()
         require(config.baseUrl.isNotBlank()) { "Device address is not configured" }
 
-        val connection = URL("${config.baseUrl}$path").openConnection() as HttpURLConnection
+        val url = URL("${config.baseUrl}$path")
+        val hotspotNetwork = connectivityManager.allNetworks.firstOrNull { network ->
+            val capabilities = connectivityManager.getNetworkCapabilities(network)
+            val routes = connectivityManager.getLinkProperties(network)?.routes.orEmpty()
+            capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true &&
+                routes.any { it.matches(hotspotAddress) }
+        }
+        val connection = (hotspotNetwork?.openConnection(url) ?: url.openConnection()) as HttpURLConnection
         return try {
             connection.requestMethod = method
             connection.connectTimeout = CONNECT_TIMEOUT_MS
@@ -132,9 +145,10 @@ class Esp32Client(context: Context) {
         private const val PREFERENCES = "esp32_device"
         private const val KEY_TOKEN = "token"
         private const val KEY_LAST_EVENT = "last_event_sequence"
-        private const val DEFAULT_HOTSPOT_ADDRESS = "http://192.168.4.1"
-        private const val CONNECT_TIMEOUT_MS = 2500
-        private const val READ_TIMEOUT_MS = 2500
+        private const val DEFAULT_HOTSPOT_HOST = "192.168.4.1"
+        private const val DEFAULT_HOTSPOT_ADDRESS = "http://$DEFAULT_HOTSPOT_HOST"
+        private const val CONNECT_TIMEOUT_MS = 4000
+        private const val READ_TIMEOUT_MS = 4000
     }
 }
 

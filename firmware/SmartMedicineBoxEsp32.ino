@@ -24,7 +24,7 @@ constexpr uint8_t MEDICINE_PRESENT_IR_STATE = LOW;
 constexpr uint8_t MAX_SCHEDULES = 16;
 constexpr unsigned long REMINDER_TIMEOUT_MS = 5UL * 60UL * 1000UL;
 constexpr unsigned long WIFI_CONNECT_TIMEOUT_MS = 8000UL;
-constexpr char FIRMWARE_VERSION[] = "1.3.0";
+constexpr char FIRMWARE_VERSION[] = "1.3.1";
 
 #ifndef AP_SSID
 #define AP_SSID "SmartMedBox"
@@ -318,7 +318,8 @@ void setup() {
   }
 
   WiFi.mode(WIFI_AP_STA);
-  if (!WiFi.softAP(AP_SSID, AP_PASSWORD)) {
+  WiFi.setSleep(false);
+  if (!WiFi.softAP(AP_SSID, AP_PASSWORD, 6, false, 2)) {
     Serial.println("Failed to start medicine box hotspot.");
   } else {
     Serial.printf("Hotspot: %s\n", AP_SSID);
@@ -353,6 +354,8 @@ void setup() {
       }
     } else {
       Serial.println("Home WiFi unavailable; hotspot and RTC remain active.");
+      WiFi.disconnect(false, false);
+      WiFi.mode(WIFI_AP);
     }
   }
   Serial.println("Connect the phone to the hotspot; the app will sync automatically.");
