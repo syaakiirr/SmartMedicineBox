@@ -37,6 +37,11 @@ firmware/secrets.h
 # Arduino build outputs
 firmware/build/
 
+# Local API credentials
+/test/
+**/api.txt
+**/*api*key*.txt
+
 # Machine-specific agent/tool configs and internals
 .mcp.json
 .opencode/

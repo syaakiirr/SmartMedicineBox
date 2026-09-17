@@ -10,6 +10,7 @@ Android app + ESP32 firmware that remind patients to take scheduled medication a
 - **Caregiver view** — separate navigation and overview prioritising due, missed, and recent box activity; zero counts stay quiet instead of red.
 - **Local reminders** — exact daily alarms with alarm sound + vibration, rescheduled after boot, package update, and time/timezone changes (Android 13+ notification permission requested).
 - **ESP32 sync** — automatic REST sync over the box's own password-protected Wi-Fi hotspot: heartbeat, schedule push/delete, acknowledgment, and IR event import. Home-LAN API access still requires `X-Device-Key`. Schedules are re-sent after every reconnect (ESP32 holds them in RAM).
+- **AI medicine assistant** — optional text chat for general medicine information and symptom guidance through the OpenAI Responses API. It includes medical safety guardrails and is not a diagnosis service.
 - **Hardware** — 16×2 I2C LCD (auto-detected), DS3231 RTC (NTP-synced, offline fallback), LED + active buzzer on reminder, IR sensor confirming box access and silencing the reminder.
 
 ## Hardware
@@ -41,6 +42,14 @@ Requires Android Studio with a JDK; `minSdk 24`.
 ```
 
 Install `app/build/outputs/apk/debug/app-debug.apk`, create an account (Patient or Caregiver role changes the navigation), and connect the phone to the `SmartMedBox` Wi-Fi hotspot. The app automatically finds the box at `192.168.4.1` and syncs without a separate linking step. Android may warn that this Wi-Fi has no internet, which is expected.
+
+### AI assistant
+
+The AI tab is available to both Patient and Caregiver roles. Open its key settings and enter an OpenAI Platform API key. The key is encrypted on the device, excluded from Android backups, and never bundled in release APKs. ChatGPT Plus does not include API usage; the API account needs separate billing or credits. Keep mobile data enabled while connected to the local-only `SmartMedBox` hotspot so AI requests can use cellular internet.
+
+Before first use, the app discloses that questions and recent chat context are sent to OpenAI. OpenAI states that API data is not used for training by default, but prompts and responses may be retained in abuse-monitoring logs for up to 30 days. Requests use `store: false`, and users should avoid submitting identifying information.
+
+AI responses provide general information only. They must not be treated as a diagnosis, prescription, personalized dosage instruction, or replacement for a doctor or pharmacist. Call Malaysia emergency number 999 for urgent symptoms.
 
 ## API contract
 

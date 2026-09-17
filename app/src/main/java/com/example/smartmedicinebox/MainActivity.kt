@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -41,6 +42,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Schedule  : Screen("schedule", "Schedule", Icons.Default.DateRange)
     object History   : Screen("history", "History", Icons.Default.History)
     object Caregiver : Screen("caregiver", "Caregiver", Icons.Default.Person)
+    object AiAssistant : Screen("ai_assistant", "AI", Icons.Default.SmartToy)
     object Login     : Screen("login", "Login", Icons.Default.Home)
     object AddMedicine  : Screen("add_medicine", "Add Medicine", Icons.Default.Home)
     object EditMedicine : Screen("edit_medicine", "Edit Medicine", Icons.Default.Home)
@@ -49,13 +51,15 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
 val patientNavItems = listOf(
     Screen.Dashboard,
     Screen.Schedule,
-    Screen.History
+    Screen.History,
+    Screen.AiAssistant
 )
 
 val caregiverNavItems = listOf(
     Screen.Caregiver,
     Screen.Schedule,
-    Screen.History
+    Screen.History,
+    Screen.AiAssistant
 )
 
 class MainActivity : ComponentActivity() {
@@ -204,6 +208,10 @@ fun SmartMedicineBoxApp(context: Context) {
                 CaregiverScreen(
                     viewModel = viewModel
                 )
+            }
+
+            composable(Screen.AiAssistant.route) {
+                AiAssistantScreen()
             }
         }
     }

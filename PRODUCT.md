@@ -31,6 +31,7 @@ Patients check the dashboard and respond to reminders throughout the day. Caregi
 - Preserve Android system navigation and Material 3 interaction conventions.
 - Do not report the device as connected until a real backend or device transport confirms it.
 - Synchronize medicine changes to a paired ESP32 and import confirmed or missed hardware events.
+- Provide optional AI-assisted general medicine information and symptom guidance with explicit medical safety boundaries.
 
 ## Brand Commitments
 
