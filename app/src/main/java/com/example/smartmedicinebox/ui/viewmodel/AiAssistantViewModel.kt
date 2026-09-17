@@ -64,22 +64,6 @@ class AiAssistantViewModel(application: Application) : AndroidViewModel(applicat
         )
     }
 
-    fun saveApiKey(apiKey: String): Boolean {
-        val normalizedKey = apiKey.trim()
-        if (normalizedKey.length < 20) {
-            _state.update { it.copy(errorMessage = "Enter a valid Gemini API key.") }
-            return false
-        }
-        keyStore.saveKey(normalizedKey)
-        _state.update { it.copy(hasApiKey = true, errorMessage = null) }
-        return true
-    }
-
-    fun clearApiKey() {
-        keyStore.clearKey()
-        _state.update { it.copy(hasApiKey = false, errorMessage = null) }
-    }
-
     fun acceptPrivacyNotice() {
         keyStore.acceptPrivacyNotice()
         _state.update { it.copy(hasAcceptedPrivacy = true, errorMessage = null) }
@@ -110,7 +94,7 @@ class AiAssistantViewModel(application: Application) : AndroidViewModel(applicat
             return
         }
         if (!keyStore.hasKey()) {
-            _state.update { it.copy(errorMessage = "Add your Gemini API key first.") }
+            _state.update { it.copy(errorMessage = "AI access is not configured in this app build.") }
             return
         }
         if (!_state.value.hasInternet) {

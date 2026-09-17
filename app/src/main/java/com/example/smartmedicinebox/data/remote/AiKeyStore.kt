@@ -5,6 +5,7 @@ package com.example.smartmedicinebox.data.remote
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.example.smartmedicinebox.BuildConfig
 
 class AiKeyStore(context: Context) {
     private val preferences = EncryptedSharedPreferences.create(
@@ -18,9 +19,14 @@ class AiKeyStore(context: Context) {
     )
 
     init {
-        if (preferences.contains(LEGACY_OPENAI_KEY) || preferences.contains(LEGACY_PRIVACY_ACCEPTED)) {
+        if (
+            preferences.contains(LEGACY_OPENAI_KEY) ||
+            preferences.contains(LEGACY_GEMINI_KEY) ||
+            preferences.contains(LEGACY_PRIVACY_ACCEPTED)
+        ) {
             preferences.edit()
                 .remove(LEGACY_OPENAI_KEY)
+                .remove(LEGACY_GEMINI_KEY)
                 .remove(LEGACY_PRIVACY_ACCEPTED)
                 .apply()
         }
@@ -30,15 +36,7 @@ class AiKeyStore(context: Context) {
 
     fun hasAcceptedPrivacy(): Boolean = preferences.getBoolean(KEY_PRIVACY_ACCEPTED, false)
 
-    fun apiKey(): String = preferences.getString(KEY_API_KEY, "").orEmpty()
-
-    fun saveKey(apiKey: String) {
-        preferences.edit().putString(KEY_API_KEY, apiKey.trim()).apply()
-    }
-
-    fun clearKey() {
-        preferences.edit().remove(KEY_API_KEY).apply()
-    }
+    fun apiKey(): String = BuildConfig.GEMINI_API_KEY
 
     fun acceptPrivacyNotice() {
         preferences.edit().putBoolean(KEY_PRIVACY_ACCEPTED, true).apply()
@@ -46,9 +44,9 @@ class AiKeyStore(context: Context) {
 
     companion object {
         const val PREFERENCES = "ai_prefs"
-        private const val KEY_API_KEY = "gemini_api_key"
         private const val KEY_PRIVACY_ACCEPTED = "gemini_privacy_notice_accepted"
         private const val LEGACY_OPENAI_KEY = "openai_api_key"
+        private const val LEGACY_GEMINI_KEY = "gemini_api_key"
         private const val LEGACY_PRIVACY_ACCEPTED = "privacy_notice_accepted"
     }
 }

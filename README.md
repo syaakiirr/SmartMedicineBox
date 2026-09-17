@@ -45,7 +45,7 @@ Install `app/build/outputs/apk/debug/app-debug.apk`, create an account (Patient 
 
 ### AI assistant
 
-The AI tab is available to both Patient and Caregiver roles. Open its key settings and enter a Gemini API key from Google AI Studio. The key is encrypted on the device, excluded from Android backups, and never bundled in release APKs. The app uses Google's `gemini-3.8-flash` model. Keep mobile data enabled while connected to the local-only `SmartMedBox` hotspot so AI requests can use cellular internet.
+The AI tab is available to both Patient and Caregiver roles without requiring users to enter an API key. Release builds use app-managed Gemini access and Google's `gemini-3.8-flash` model. For local builds, set `GEMINI_API_KEY` in the untracked `local.properties` file or as an environment variable. Because credentials embedded in a mobile APK can be extracted, production keys must be restricted to the Gemini API and the Android app in Google Cloud. Keep mobile data enabled while connected to the local-only `SmartMedBox` hotspot so AI requests can use cellular internet.
 
 Before first use, the app discloses that questions and recent chat context are sent to Google Gemini. Google handles prompts and responses according to the Gemini API terms and the data policy for the API plan; free and paid plans may differ. Users should avoid submitting identifying or sensitive information.
 

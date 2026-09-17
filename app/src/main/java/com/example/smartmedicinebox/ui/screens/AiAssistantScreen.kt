@@ -16,12 +16,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -44,17 +42,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.SecureFlagPolicy
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.smartmedicinebox.ui.viewmodel.AiAssistantState
 import com.example.smartmedicinebox.ui.viewmodel.AiAssistantViewModel
@@ -73,9 +65,6 @@ fun AiAssistantScreen(viewModel: AiAssistantViewModel = viewModel()) {
     val state by viewModel.state.collectAsState()
     var messageText by rememberSaveable { mutableStateOf("") }
     var showPrivacyDialog by rememberSaveable { mutableStateOf(!state.hasAcceptedPrivacy) }
-    var showKeyDialog by rememberSaveable {
-        mutableStateOf(state.hasAcceptedPrivacy && !state.hasApiKey)
-    }
     val listState = rememberLazyListState()
 
     LaunchedEffect(state.messages.size, state.isLoading) {
@@ -89,21 +78,8 @@ fun AiAssistantScreen(viewModel: AiAssistantViewModel = viewModel()) {
             onAccept = {
                 viewModel.acceptPrivacyNotice()
                 showPrivacyDialog = false
-                if (!state.hasApiKey) showKeyDialog = true
             },
             onDismiss = { showPrivacyDialog = false }
-        )
-    } else if (showKeyDialog) {
-        ApiKeyDialog(
-            hasApiKey = state.hasApiKey,
-            onSave = { key ->
-                if (viewModel.saveApiKey(key)) showKeyDialog = false
-            },
-            onClear = {
-                viewModel.clearApiKey()
-                showKeyDialog = false
-            },
-            onDismiss = { showKeyDialog = false }
         )
     }
 
@@ -120,13 +96,6 @@ fun AiAssistantScreen(viewModel: AiAssistantViewModel = viewModel()) {
                         )
                     }
                 },
-                actions = {
-                    IconButton(onClick = {
-                        if (state.hasAcceptedPrivacy) showKeyDialog = true else showPrivacyDialog = true
-                    }) {
-                        Icon(Icons.Default.Key, contentDescription = "Gemini API key settings")
-                    }
-                }
             )
         },
         bottomBar = {
@@ -164,7 +133,7 @@ fun AiAssistantScreen(viewModel: AiAssistantViewModel = viewModel()) {
                             viewModel.sendMessage(it)
                             messageText = ""
                         },
-                        suggestionsEnabled = state.hasApiKey && state.hasInternet
+                        suggestionsEnabled = state.hasAcceptedPrivacy && state.hasApiKey && state.hasInternet
                     )
                 }
             } else {
@@ -209,7 +178,7 @@ private fun MedicalSafetyCard() {
 private fun ConnectionBanner(state: AiAssistantState) {
     val message = when {
         !state.hasAcceptedPrivacy -> "Review the privacy notice before sending health information to Google Gemini."
-        !state.hasApiKey -> "Add your Gemini API key to start asking questions."
+        !state.hasApiKey -> "AI access is not configured in this app build."
         state.hasInternet -> "AI online. Mobile data can stay on while SmartMedBox Wi-Fi is connected."
         else -> "AI needs internet. Turn on mobile data or connect to an internet-enabled Wi-Fi."
     }
@@ -356,56 +325,6 @@ private fun MessageComposer(
             }
         }
     }
-}
-
-@Composable
-private fun ApiKeyDialog(
-    hasApiKey: Boolean,
-    onSave: (String) -> Unit,
-    onClear: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    var apiKey by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Gemini API key") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "Your key is encrypted on this device and excluded from Android backup. It is never included in the GitHub APK.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                OutlinedTextField(
-                    value = apiKey,
-                    onValueChange = { apiKey = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(if (hasApiKey) "Replace API key" else "API key") },
-                    placeholder = { Text("AQ... or AIza...") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done,
-                        autoCorrectEnabled = false
-                    ),
-                    singleLine = true
-                )
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onSave(apiKey) }, enabled = apiKey.isNotBlank()) {
-                Text("Save key")
-            }
-        },
-        dismissButton = {
-            Row {
-                if (hasApiKey) {
-                    TextButton(onClick = onClear) { Text("Remove key") }
-                }
-                TextButton(onClick = onDismiss) { Text("Cancel") }
-            }
-        },
-        properties = DialogProperties(securePolicy = SecureFlagPolicy.SecureOn)
-    )
 }
 
 @Composable
